@@ -117,7 +117,8 @@ main() {
     if [ -n "$risky" ]; then finding risky_ports exposure fail "Services open to the whole internet that usually shouldn't be" "${risky%, }" "Bind them to 127.0.0.1 or a private network, or allow only your own addresses in the firewall."
     else finding risky_ports exposure pass "No databases or admin services open to the internet" "None of the usual risky ports listen on every address." ""; fi
     ports=$(printf '%s\n' "$public" | awk '{ print $2 "/" $1 }' | sort -n | uniq | tr '\n' ' ')
-    finding public_ports exposure info "$count ports listen on every address" "$ports" "Anything here is reachable from the internet unless a firewall blocks it."
+    if [ "$count" = 1 ]; then what="1 port listens"; else what="$count ports listen"; fi
+    finding public_ports exposure info "$what on every address" "$ports" "Anything here is reachable from the internet unless a firewall blocks it."
   fi
   if [ $ROOT = yes ]; then
     fw=
@@ -214,7 +215,7 @@ main() {
     elif [ "$n" -gt 50 ]; then finding attacks attacks warn "$n failed logins in 24 hours" "Normal background noise for an internet server, but each one is a guess at a password." "Use SSH keys only and block repeat offenders."
     else finding attacks attacks pass "$n failed logins in 24 hours" "Very little password guessing." ""; fi
     if has fail2ban-client || has cscli; then finding blocker attacks pass "Repeat attackers are blocked" "fail2ban or CrowdSec is installed." ""
-    else finding blocker attacks warn "Nothing blocks repeat attackers" "No fail2ban or CrowdSec, so a bot can keep guessing." "Install fail2ban, CrowdSec, or let Frabs block them at the network."; fi
+    elif has sshd || [ "$n" -gt 50 ]; then finding blocker attacks warn "Nothing blocks repeat attackers" "No fail2ban or CrowdSec, so a bot can keep guessing." "Install fail2ban, CrowdSec, or let Frabs block them at the network."; fi
   fi
   step attacks done "Login attacks, last 24 hours"
 
