@@ -191,8 +191,13 @@ main() {
   if [ "$hidden" -gt 0 ]; then finding tmp_exec compromise warn "$hidden programs in temporary folders" "Executable files in /tmp, /var/tmp or /dev/shm, where attackers often drop tools." "ls -la /tmp /var/tmp /dev/shm and remove anything you don't recognise."
   else finding tmp_exec compromise pass "No programs in temporary folders" "" ""; fi
   if [ $ROOT = yes ]; then
-    keys=$(grep -c . /root/.ssh/authorized_keys 2>/dev/null || echo 0)
-    finding root_keys compromise info "$keys SSH keys can log in as root" "Lines in /root/.ssh/authorized_keys." "Remove any key you don't recognise."
+    # Keys only: no blank lines or comments. grep -c prints 0 itself when nothing matches, so no "|| echo 0" (that made "00").
+    keys=$(grep -c -v -e '^[[:space:]]*#' -e '^[[:space:]]*$' /root/.ssh/authorized_keys 2>/dev/null); keys=${keys:-0}
+    case $keys in
+      0) finding root_keys compromise pass "No SSH keys can log in as root" "" "" ;;
+      1) finding root_keys compromise info "1 SSH key can log in as root" "Keys in /root/.ssh/authorized_keys." "Remove it if you don't recognise it." ;;
+      *) finding root_keys compromise info "$keys SSH keys can log in as root" "Keys in /root/.ssh/authorized_keys." "Remove any key you don't recognise." ;;
+    esac
   else needs_root root_keys compromise "SSH keys that can log in as root"; fi
   step compromise done "Signs of compromise"
 
